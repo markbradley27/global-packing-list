@@ -1,4 +1,4 @@
-# global-pakcing-list
+# global-packing-list
 
 App script for packing list sheet
 
