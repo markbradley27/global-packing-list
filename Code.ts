@@ -1,7 +1,14 @@
 const PACKING_LIST_SHEET_NAME = "Packing List";
-const PACKING_LIST_ROW_START = 4;
+
+const PACKING_LIST_ROW_START = 1;
+const PACKING_LIST_COL_START = 2;
+
 const CATEGORY_LABEL_TEXT_STYLE = SpreadsheetApp.newTextStyle()
   .setBold(true)
+  .build();
+const FADED_PACKING_LIST_TEXT_STYLE = SpreadsheetApp.newTextStyle()
+  .setItalic(true)
+  .setForegroundColor("#B7B7B7")
   .build();
 
 function getPackingListSheet() {
@@ -10,19 +17,23 @@ function getPackingListSheet() {
   );
 }
 
-function getPackingListSelectionsRow() {
-  return getPackingListSheet().getRange("A2:2");
+function getPackingListSelectionsCol() {
+  return getPackingListSheet().getRange("A:A");
 }
 
 function getSelectedTags(): ReadonlySet<string> {
-  const selectionsRow = getPackingListSelectionsRow();
+  const selectionsCol = getPackingListSelectionsCol();
   const allTags = new Set<string>();
-  for (
-    let i = selectionsRow.getColumn();
-    i <= selectionsRow.getLastColumn();
-    i++
-  ) {
-    const cellTags = String(selectionsRow.getCell(1, i).getValue())
+  for (let i = 1; i <= selectionsCol.getLastRow(); i++) {
+    Logger.log(`getSelectedTags i: ${i}`);
+    const cell = selectionsCol.getCell(i, 1);
+
+    // Skip title cells (which we assume are always bold).
+    if (cell.getTextStyle().isBold()) {
+      continue;
+    }
+
+    const cellTags = String(cell.getValue())
       .split(",")
       .map((s) => s.trim().toLowerCase())
       .filter((s) => s.length > 0);
@@ -118,33 +129,52 @@ function calculateToPackByCategory(
   return toPackByCategory;
 }
 
-function outputPackingList(toPackByCategory: ReadonlyArray<ToPackCategory>) {
+function getPackingListRegion() {
   const packingListSheet = getPackingListSheet();
 
-  packingListSheet
-    .getRange(
-      PACKING_LIST_ROW_START,
-      1,
-      Math.max(1, packingListSheet.getLastRow() - PACKING_LIST_ROW_START + 1),
-      Math.max(1, packingListSheet.getLastColumn() + 1),
-    )
-    .clear();
+  return packingListSheet.getRange(
+    PACKING_LIST_ROW_START,
+    PACKING_LIST_COL_START,
+    packingListSheet.getMaxRows() - PACKING_LIST_ROW_START + 1,
+    packingListSheet.getMaxColumns() - PACKING_LIST_COL_START + 1,
+  );
+}
+
+function clearPackingList() {
+  getPackingListRegion().clear();
+}
+
+function fadePackingList() {
+  getPackingListRegion()
+    .setBackground("#E8EAED")
+    .setTextStyle(FADED_PACKING_LIST_TEXT_STYLE);
+}
+
+function outputPackingList(toPackByCategory: ReadonlyArray<ToPackCategory>) {
+  clearPackingList();
+
+  const packingListSheet = getPackingListSheet();
 
   for (let categoryI = 0; categoryI < toPackByCategory.length; categoryI++) {
     const category = toPackByCategory[categoryI];
     packingListSheet
-      .getRange(PACKING_LIST_ROW_START, categoryI + 1)
+      .getRange(PACKING_LIST_ROW_START, PACKING_LIST_COL_START + categoryI)
       .setTextStyle(CATEGORY_LABEL_TEXT_STYLE)
       .setValue(category.name);
     for (let toPackI = 0; toPackI < category.toPack.length; toPackI++) {
       packingListSheet
-        .getRange(toPackI + PACKING_LIST_ROW_START + 1, categoryI + 1)
+        .getRange(
+          PACKING_LIST_ROW_START + toPackI + 1,
+          PACKING_LIST_COL_START + categoryI,
+        )
         .setValue(category.toPack[toPackI]);
     }
   }
 }
 
 function onEdit() {
+  fadePackingList();
+
   const selectedTags = getSelectedTags();
   const packablesByCategory = getPackablesByCategory();
 
