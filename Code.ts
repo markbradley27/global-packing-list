@@ -185,3 +185,50 @@ function onEdit() {
 
   outputPackingList(toPackByCategory);
 }
+
+function formatPackableSheet(
+  packableSheet: GoogleAppsScript.Spreadsheet.Sheet,
+) {
+  const data = packableSheet.getDataRange();
+  const allInclusions = new Set<string>();
+  // I tried using a Map<number, Set<string>> here, but iterating over a Map
+  // didn't seem to work at all.
+  const rowInclusions = new Array<{ row: number; inclusions: Set<string> }>();
+  for (let row = 1; row <= data.getLastRow(); row++) {
+    const name = data.getCell(row, 1).getValue();
+    if (name === "") {
+      continue;
+    }
+
+    const inclusions = new Set<string>();
+    for (let col = 2; col <= data.getLastColumn(); col++) {
+      const value = data.getCell(row, col).getValue();
+      if (value === "") {
+        continue;
+      }
+
+      inclusions.add(value);
+      allInclusions.add(value);
+    }
+    rowInclusions.push({ row, inclusions });
+  }
+  const sortedInclusions = Array.from(allInclusions).sort();
+
+  for (const { row, inclusions } of rowInclusions) {
+    packableSheet
+      .getRange(row, 2, 1, packableSheet.getLastColumn() - 1)
+      .clearContent();
+    sortedInclusions.forEach((inclusion, inclusionI) => {
+      if (inclusions.has(inclusion)) {
+        packableSheet.getRange(row, 1 + inclusionI).setValue(inclusion);
+      }
+    });
+  }
+}
+
+function formatPackables() {
+  const packableSheets = getPackableSheets();
+  for (const packableSheet of packableSheets) {
+    formatPackableSheet(packableSheet);
+  }
+}
