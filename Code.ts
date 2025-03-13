@@ -1,7 +1,7 @@
 const PACKING_LIST_SHEET_NAME = "Packing List";
 
 const PACKING_LIST_ROW_START = 1;
-const PACKING_LIST_COL_START = 2;
+const PACKING_LIST_COL_START = 3;
 
 const CATEGORY_LABEL_TEXT_STYLE = SpreadsheetApp.newTextStyle()
   .setBold(true)
@@ -17,31 +17,36 @@ function getPackingListSheet() {
   );
 }
 
-function getPackingListSelectionsCol() {
-  return getPackingListSheet().getRange("A:A");
+function getClearBox() {
+  return getPackingListSheet().getRange("A1");
+}
+
+function getSurveyCols() {
+  return getPackingListSheet().getRange("A2:B");
 }
 
 function getSelectedTags(): ReadonlySet<string> {
-  const selectionsCol = getPackingListSelectionsCol();
-  const allTags = new Set<string>();
-  for (let i = 1; i <= selectionsCol.getLastRow(); i++) {
-    Logger.log(`getSelectedTags i: ${i}`);
-    const cell = selectionsCol.getCell(i, 1);
-
-    // Skip title cells (which we assume are always bold).
-    if (cell.getTextStyle().isBold()) {
-      continue;
-    }
-
-    const cellTags = String(cell.getValue())
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter((s) => s.length > 0);
-    for (const cellTag of cellTags) {
-      allTags.add(cellTag);
+  const surveyCols = getSurveyCols();
+  const selectedTags = new Set<string>();
+  for (let i = 1; i <= surveyCols.getHeight(); i++) {
+    const selected = surveyCols.getCell(i, 1).getValue();
+    if (selected) {
+      const tag = String(surveyCols.getCell(i, 2).getValue())
+        .trim()
+        .toLowerCase();
+      if (tag.length > 0) {
+        selectedTags.add(tag);
+      }
     }
   }
-  return allTags;
+  return selectedTags;
+}
+
+function clearSelectedTags() {
+  const surveyCols = getSurveyCols();
+  for (let i = 1; i <= surveyCols.getHeight(); i++) {
+    surveyCols.getCell(i, 1).clear();
+  }
 }
 
 function getPackableSheets() {
@@ -174,6 +179,12 @@ function outputPackingList(toPackByCategory: ReadonlyArray<ToPackCategory>) {
 
 function onEdit() {
   fadePackingList();
+
+  const clearBox = getClearBox();
+  if (clearBox.getValue()) {
+    clearSelectedTags();
+    clearBox.clear();
+  }
 
   const selectedTags = getSelectedTags();
   const packablesByCategory = getPackablesByCategory();
