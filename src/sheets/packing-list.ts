@@ -61,13 +61,23 @@ function getPackingListRegion() {
 }
 
 function clearPackingList() {
-  getPackingListRegion().clear();
+  getPackingListRegion().clear({
+    contentsOnly: true,
+  });
 }
 
 function fadePackingList() {
   getPackingListRegion()
     .setBackground("#E8EAED")
     .setTextStyle(PACKING_LIST_FADED_TEXT_STYLE);
+}
+
+function resetPackingListFormatting() {
+  const packingListRegion = getPackingListRegion();
+  packingListRegion.clear({ formatOnly: true });
+  packingListRegion
+    .offset(0, 0, 1)
+    .setTextStyle(PACKING_LIST_CATEGORY_LABEL_TEXT_STYLE);
 }
 
 function setPackingList(toPackGroups: ReadonlyArray<ToPackGroup>) {
@@ -79,7 +89,6 @@ function setPackingList(toPackGroups: ReadonlyArray<ToPackGroup>) {
     const group = toPackGroups[groupI];
     packingListSheet
       .getRange(PACKING_LIST_ROW_START, PACKING_LIST_COL_START + groupI)
-      .setTextStyle(PACKING_LIST_CATEGORY_LABEL_TEXT_STYLE)
       .setValue(group.name);
     for (let toPackI = 0; toPackI < group.toPack.length; toPackI++) {
       packingListSheet

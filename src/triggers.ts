@@ -16,4 +16,5 @@ function onEdit() {
   );
 
   setPackingList(toPackByCategory);
+  resetPackingListFormatting();
 }
